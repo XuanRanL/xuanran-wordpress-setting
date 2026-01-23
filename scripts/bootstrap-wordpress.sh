@@ -15,4 +15,4 @@ docker compose run --rm --entrypoint "" --user root wordpress \
 # Bring the stack up (feel free to remove services you don't need)
 docker compose up -d
 
-echo "WordPress is booting. Visit http://localhost:7968 to finish installation."
+echo "WordPress is booting. Visit http://localhost:9797 to finish installation."

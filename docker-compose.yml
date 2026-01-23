@@ -12,11 +12,11 @@ services:
       WORDPRESS_DB_NAME: ${WP_DB_NAME}
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_ENVIRONMENT_TYPE', 'production');
-        define('WP_MEMORY_LIMIT', '256M');
-        define('WP_MAX_MEMORY_LIMIT', '512M');
-        define('DISALLOW_FILE_EDIT', true);
-        define('WP_CACHE', true);
-        define('DISABLE_WP_CRON', true); // we'll run real cron
+        define('WP_MEMORY_LIMIT', '1024M');
+        define('WP_MAX_MEMORY_LIMIT', '1024M');
+        define('DISALLOW_FILE_EDIT', false);
+        define('WP_CACHE', false);
+        define('DISABLE_WP_CRON', false);
         // Redis
         define('WP_REDIS_HOST', 'redis');
         define('WP_REDIS_PORT', 6379);
@@ -42,7 +42,7 @@ services:
     depends_on:
       - wordpress
     ports:
-      - "7968:80"    # Cloudflare Tunnel will connect here
+      - "9797:80"    # Cloudflare Tunnel will connect here
     volumes:
       - ./html:/var/www/html:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -64,6 +64,7 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
+      - --innodb-buffer-pool-size=1073741824
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${WP_DB_NAME}
