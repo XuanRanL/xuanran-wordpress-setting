@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   wordpress:
     build:
@@ -15,7 +13,7 @@ services:
         define('WP_MEMORY_LIMIT', '1024M');
         define('WP_MAX_MEMORY_LIMIT', '1024M');
         define('DISALLOW_FILE_EDIT', false);
-        define('WP_CACHE', false);
+        define('WP_CACHE', true);
         define('DISABLE_WP_CRON', false);
         // Redis
         define('WP_REDIS_HOST', 'redis');
@@ -106,6 +104,15 @@ services:
       dockerfile: php/Dockerfile.cli
     user: "33:33"
     working_dir: /var/www/html
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: ${WP_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${WP_DB_NAME}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_REDIS_HOST', 'redis');
+        define('WP_REDIS_PORT', 6379);
+        define('WP_REDIS_DATABASE', 0);
     volumes:
       - ./html:/var/www/html
     entrypoint: [ "bash", "-lc" ]
@@ -113,6 +120,8 @@ services:
       "wp core is-installed || exit 0"
     depends_on:
       - wordpress
+      - db
+      - redis
     restart: "no"
 
 volumes:
