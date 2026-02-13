@@ -62,7 +62,25 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
+      # InnoDB
       - --innodb-buffer-pool-size=1073741824
+      - --innodb-log-file-size=268435456
+      - --innodb-flush-log-at-trx-commit=2
+      - --innodb-flush-method=O_DIRECT
+      - --innodb-io-capacity=1000
+      - --innodb-io-capacity-max=4000
+      - --innodb-read-io-threads=8
+      - --innodb-write-io-threads=8
+      # Temp tables & buffers
+      - --tmp-table-size=134217728
+      - --max-heap-table-size=134217728
+      - --sort-buffer-size=2097152
+      - --join-buffer-size=2097152
+      - --read-buffer-size=262144
+      - --read-rnd-buffer-size=524288
+      # Connections & threads
+      - --max-connections=200
+      - --thread-cache-size=32
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${WP_DB_NAME}
