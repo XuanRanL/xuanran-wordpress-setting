@@ -1,0 +1,19 @@
+# External WP-Cron trigger  (docker-compose sets DISABLE_WP_CRON=true)
+# ---------------------------------------------------------------------------
+# WordPress' built-in cron only fires on visitor requests, so low-traffic sites
+# miss scheduled jobs (FlyingPress preload, backups, plugin tasks) and busy
+# pages pay the cron cost on TTFB. We disable it in WP and trigger it here on a
+# fixed schedule instead.
+#
+# Install per-site (replace DOMAIN + PORT to match this site's .env):
+#   sudo cp scripts/wp-cron.cron.example /etc/cron.d/DOMAIN-wp-cron
+#   sudo sed -i 's/__DOMAIN__/canopylumen.com/; s/__PORT__/10003/' /etc/cron.d/DOMAIN-wp-cron
+#   sudo systemctl restart cron
+#
+# Keep ONE cron file per site under /etc/cron.d/ (not a shared root crontab) so it
+# is self-documenting and disappears with the site. Stagger the minute field
+# across sites so they don't all fire at :00.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+*/5 * * * * root curl -fsS --max-time 60 -H 'Host: __DOMAIN__' 'http://127.0.0.1:__PORT__/wp-cron.php?doing_wp_cron' >/dev/null 2>&1

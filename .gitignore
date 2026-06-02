@@ -1,3 +1,15 @@
+# Secrets — NEVER commit
+.env
+
+# Bind mounts / runtime data
 html/
 db_data/
 nginx_cache/
+
+# Local backups and editor noise
+*.bak
+*.bak-*
+*.pre-*
+*.orig
+*~
+.DS_Store

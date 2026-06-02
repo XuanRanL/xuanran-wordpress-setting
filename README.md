@@ -1,41 +1,91 @@
-# WordPress + Cloudflare Tunnel Stack
+# WordPress + Cloudflare Tunnel Stack (xuanran base template)
 
-This repository provisions WordPress (PHP-FPM), nginx, MySQL, Redis, phpMyAdmin, and helper containers that are ready to sit behind a Cloudflare Zero Trust tunnel.
+Opinionated, production-tuned WordPress stack used as the **base template for new
+sites**. Each site is one `docker compose` project (WordPress PHP-FPM, nginx,
+MySQL, Redis, phpMyAdmin, WP-CLI) sitting behind a Cloudflare Zero Trust tunnel.
+
+Caching/perf plugins assumed per site: **FlyingPress** (full-page cache),
+**Redis Object Cache**, **Imagify** (AVIF/WebP).
+
+## What this template bakes in
+
+| Layer | Choice | Why |
+|------|--------|-----|
+| MySQL | 8.4.8, `--skip-log-bin`, redo-log 512M | current LTS; no binlog (no replication/PITR) saves IO |
+| PHP OPcache | JIT **off**, `validate_timestamps=1` (60s) | stable with Wordfence/heavy plugins; updates auto-apply |
+| Redis | `maxmemory 256mb`, `allkeys-lru`, no persistence | pure object cache, bounded RAM |
+| nginx | AVIF/WebP sidecars, admin-ajax/wp-cron 2h timeouts, big fastcgi buffers, real-IP incl. docker bridge | image perf + long admin jobs + correct visitor IPs |
+| Page cache | **FlyingPress only** (no nginx fastcgi_cache) | one smart, self-purging layer — no stale duplicates |
+| WP-Cron | `DISABLE_WP_CRON=true` + external system cron | reliable on low traffic, no TTFB hit |
+| Ports | `NGINX_PORT` / `PMA_PORT` from `.env` | drop-in per-site, no editing compose |
 
 ## Prerequisites
 
 - Docker Compose v2
-- A `.env` file providing `DB_ROOT_PASSWORD`, `WP_DB_USER`, `WP_DB_PASSWORD`, and `WP_DB_NAME`
-- (Optional) a Cloudflare Tunnel that forwards HTTPS traffic to `http://localhost:7968`
+- A `.env` (copy from `.env.example`) with DB creds + unique `NGINX_PORT` / `PMA_PORT`
+- A Cloudflare Tunnel forwarding HTTPS to `http://localhost:<NGINX_PORT>`
 
-## One-time bootstrap
-
-Use the helper script to create bind mounts, fix permissions, and start the stack:
+## New-site setup
 
 ```bash
+cp .env.example .env        # set DB creds + a UNIQUE NGINX_PORT / PMA_PORT + SITE_DOMAIN
 ./scripts/bootstrap-wordpress.sh
 ```
 
-The script will:
+The script creates the `html`/`db_data`/`nginx_cache` bind mounts, fixes
+ownership to `www-data` (UID/GID 33), and starts the stack. Finish the installer
+at `http://localhost:<NGINX_PORT>/wp-admin/install.php` (or your tunnel hostname).
 
-1. Create the `html`, `db_data`, and `nginx_cache` directories if needed.
-2. Run the WordPress container as `root` one time to `chown -R www-data:www-data /var/www/html`, ensuring WordPress can unpack core files into the bind mount.
-3. Launch every service defined in `docker-compose.yml`.
+### Install the external WP-Cron (required)
 
-After it completes, finish the WordPress installer at `http://localhost:7968/wp-admin/install.php` (or through your Cloudflare hostname).
+Because WP-Cron is disabled in WordPress, add a system cron per site:
+
+```bash
+sudo cp scripts/wp-cron.cron.example /etc/cron.d/<domain>-wp-cron
+sudo sed -i 's/__DOMAIN__/<domain>/; s/__PORT__/<NGINX_PORT>/' /etc/cron.d/<domain>-wp-cron
+sudo systemctl restart cron
+```
+
+One file per site under `/etc/cron.d/`; stagger the minute field so sites don't all fire at once.
 
 ## Cloudflare Zero Trust / arbitrary hostnames
 
-- `nginx/conf.d/wordpress.conf` now uses `server_name _ ...` so nginx will accept whatever `Host` header Cloudflare Zero Trust injects.
-- When creating your tunnel route, point it to `http://localhost:7968` and **do not** enable HTTP host rewrites, since nginx already handles arbitrary hostnames.
-- If you want stricter controls later, replace `_` with the explicit domains you intend to serve.
+- `nginx/conf.d/wordpress.conf` uses `server_name _`, so nginx accepts whatever
+  `Host` Cloudflare injects. Point the tunnel at `http://localhost:<NGINX_PORT>`
+  and do **not** enable HTTP host rewrites.
+- `nginx/conf.d/cloudflare-realip.conf` trusts Cloudflare ranges **and** the
+  docker bridge (`172.16.0.0/12`) so `$remote_addr` reflects the real visitor.
+- Lock down later by replacing `_` with your explicit domains.
+
+## Optional: serve FlyingPress cache from nginx (max speed)
+
+`wordpress.conf` ships a commented block that serves FlyingPress static HTML
+directly from nginx (bypassing PHP for logged-out GETs). Enable it **only after**
+confirming `wp-content/cache/flying-press/<host>/` is generating, then reload
+nginx. Do **not** add nginx `fastcgi_cache` — it would duplicate FlyingPress and
+serve stale pages it can't purge.
 
 ## Re-applying permissions later
 
-If you clone this repo elsewhere or wipe the `html` directory, re-run `./scripts/bootstrap-wordpress.sh` (or just the `docker compose run --rm --entrypoint "" --user root wordpress chown -R www-data:www-data /var/www/html` step) before starting the stack. WordPress requires write access to `/var/www/html` during upgrades and plugin installs.
+If you wipe `html/`, re-run `./scripts/bootstrap-wordpress.sh` (or just
+`docker compose run --rm --entrypoint "" --user root wordpress chown -R www-data:www-data /var/www/html`)
+before starting. WordPress needs write access to `/var/www/html` for upgrades/plugins.
+
+## Migrating an existing site in (Duplicator)
+
+`scripts/restore-from-duplicator.sh` + `scripts/extract-duparchive.php` restore a
+Duplicator `.daparchive` into this stack. See comments at the top of each script.
 
 ## Troubleshooting
 
-- **Nginx health check stuck in `starting`:** The health probe now uses `127.0.0.1` explicitly to avoid IPv6/localhost mismatches. If it still fails, run `docker compose logs nginx` and confirm the `wordpress` container is marked healthy.
-- **Permission denied writing into `html`:** Ensure the directory on the host is owned by UID/GID 33 (`www-data`). The bootstrap script or `sudo chown -R 33:33 html` fixes it.
-- **Cloudflare shows 403/blocked:** Cloudflare Access policies might block unauthenticated users; confirm your policy allows you, and that the tunnel routes to the `7968` port exposed here.
+- **nginx health check stuck `starting`** — probe uses `127.0.0.1` to avoid IPv6
+  mismatch; check `docker compose logs nginx` and that `wordpress` is healthy.
+- **Permission denied writing `html/`** — `sudo chown -R 33:33 html`.
+- **Cloudflare 403** — check your Access policy and that the tunnel routes to `NGINX_PORT`.
+- **Code/plugin update didn't take effect** — OPcache revalidates every 60s; wait
+  or `docker compose restart wordpress`.
+
+## Security
+
+- `.env` is gitignored — never commit real secrets. If one leaks, **rotate it**
+  (DB passwords, tunnel token); scrubbing git history alone does not un-leak it.
