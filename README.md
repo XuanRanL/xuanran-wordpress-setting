@@ -41,8 +41,11 @@ at `http://localhost:<NGINX_PORT>/wp-admin/install.php` (or your tunnel hostname
 Because WP-Cron is disabled in WordPress, add a system cron per site:
 
 ```bash
-sudo cp scripts/wp-cron.cron.example /etc/cron.d/<domain>-wp-cron
-sudo sed -i 's/__DOMAIN__/<domain>/; s/__PORT__/<NGINX_PORT>/' /etc/cron.d/<domain>-wp-cron
+# IMPORTANT: the filename must NOT contain a dot — cron/run-parts silently
+# ignores files with dots. Use the domain with dots replaced by hyphens,
+# e.g. pawkeepsake.com -> pawkeepsake-com-wp-cron
+sudo cp scripts/wp-cron.cron.example /etc/cron.d/<domain-with-hyphens>-wp-cron
+sudo sed -i 's/__DOMAIN__/<domain>/; s/__PORT__/<NGINX_PORT>/' /etc/cron.d/<domain-with-hyphens>-wp-cron
 sudo systemctl restart cron
 ```
 
@@ -84,6 +87,10 @@ Duplicator `.daparchive` into this stack. See comments at the top of each script
 - **Cloudflare 403** — check your Access policy and that the tunnel routes to `NGINX_PORT`.
 - **Code/plugin update didn't take effect** — OPcache revalidates every 60s; wait
   or `docker compose restart wordpress`.
+- **Edited an nginx/php conf but nothing changed** — the confs are single-file bind
+  mounts. Editing them changes the file's inode, but the running container keeps the
+  old one, so `nginx -s reload` does nothing. Apply config changes with
+  `docker compose up -d --force-recreate nginx wordpress`.
 
 ## Security
 
