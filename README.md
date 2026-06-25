@@ -32,7 +32,7 @@ cp .env.example .env        # set DB creds + a UNIQUE NGINX_PORT / PMA_PORT + SI
 ./scripts/bootstrap-wordpress.sh
 ```
 
-The script creates the `html`/`db_data`/`nginx_cache` bind mounts, fixes
+The script creates the `html`/`db_data` bind mounts, fixes
 ownership to `www-data` (UID/GID 33), and starts the stack. Finish the installer
 at `http://localhost:<NGINX_PORT>/wp-admin/install.php` (or your tunnel hostname).
 

@@ -50,7 +50,11 @@ services:
       - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/conf.d/wordpress.conf:/etc/nginx/conf.d/wordpress.conf:ro
       - ./nginx/conf.d/cloudflare-realip.conf:/etc/nginx/conf.d/cloudflare-realip.conf:ro
-      - ./nginx_cache:/var/cache/nginx
+      # NOTE: do NOT bind-mount /var/cache/nginx. The image pre-creates the temp
+      # dirs (client_temp, proxy_temp, ...) there; mounting a host dir over it
+      # shadows them, so nginx can't spool large request bodies (e.g. plugin .zip
+      # uploads via wp-admin/update.php) and returns 5xx ("502 Bad Gateway" via
+      # the Cloudflare tunnel). We use no nginx-level cache, so the dir isn't needed.
     healthcheck:
       # Force IPv4 to avoid localhost resolving to IPv6 (::1) where nginx is not listening
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
@@ -156,4 +160,3 @@ services:
 
 volumes:
   db_data:
-  nginx_cache:

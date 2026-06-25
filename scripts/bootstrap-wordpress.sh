@@ -4,8 +4,10 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# Ensure expected bind-mount directories exist before Docker touches them
-mkdir -p html db_data nginx_cache
+# Ensure expected bind-mount directories exist before Docker touches them.
+# NOTE: no nginx_cache dir — /var/cache/nginx is intentionally NOT bind-mounted
+# (mounting over it shadows nginx's pre-created temp dirs and breaks uploads).
+mkdir -p html db_data
 
 # Fix ownership so the wordpress container (www-data / UID 33) can write
 # Using --entrypoint '' bypasses the default WordPress entrypoint script.
