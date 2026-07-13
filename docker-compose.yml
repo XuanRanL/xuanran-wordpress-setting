@@ -69,7 +69,7 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       # InnoDB
-      - --innodb-buffer-pool-size=1073741824      # 1G; raise for DB-heavy sites
+      - --innodb-buffer-pool-size=536870912      # 512M default (raise per-site for DB-heavy stores)
       - --innodb-redo-log-capacity=536870912
       - --innodb-flush-log-at-trx-commit=2
       - --innodb-flush-method=O_DIRECT
