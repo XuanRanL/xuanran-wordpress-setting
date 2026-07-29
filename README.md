@@ -17,7 +17,40 @@ Caching/perf plugins assumed per site: **FlyingPress** (full-page cache),
 | nginx | AVIF/WebP sidecars, admin-ajax/wp-cron 2h timeouts, big fastcgi buffers, real-IP incl. docker bridge | image perf + long admin jobs + correct visitor IPs |
 | Page cache | **FlyingPress only** (no nginx fastcgi_cache) | one smart, self-purging layer — no stale duplicates |
 | WP-Cron | `DISABLE_WP_CRON=true` + external system cron | reliable on low traffic, no TTFB hit |
+| Logging | `json-file`, `max-size 20m` × `max-file 3` per service | Docker's default is **unbounded** (see below) |
+| php-fpm access log | `/dev/null` | nginx already logs the same requests, auth user included |
 | Ports | `NGINX_PORT` / `PMA_PORT` from `.env` | drop-in per-site, no editing compose |
+
+### Two logging gotchas this template fixes (added 2026-07-29)
+
+**1. Docker json-file logs never rotate by default.** A container log only resets when
+the container is *recreated*, so a long-lived site grows without limit. The 12-site fleet
+this template runs had accumulated **751MB** of container logs, with individual containers
+at 78–134MB. Every service now carries an explicit `logging:` block. Note the cap applies
+at container-creation time — an existing container must be recreated (`docker compose up -d`)
+to pick it up; changing the daemon default alone does nothing to running containers.
+
+**2. Never set `DISABLE_WP_CRON` with `wp config set`.** The `wordpress` service already
+defines it through `WORDPRESS_CONFIG_EXTRA`, which wp-config.php applies via `eval()`.
+`wp config set` appends a *second*, bare `define()` **after** that eval, so PHP logs
+
+```
+PHP Warning:  Constant DISABLE_WP_CRON already defined in /var/www/html/wp-config.php on line 133
+```
+
+on **every single request** — it was 32–47% of every container log on the fleet
+(618k lines) before this was found. It is not a functional bug (`display_errors=Off`, so
+nothing leaks into responses), but it buries real errors and inflates the log.
+The `wpcli` service now defines the constant in its own env instead, because WP-CLI
+otherwise runs `wp_cron()` on init and spawns a wp-cron.php loopback on every command.
+
+Verify both contexts after a build:
+
+```bash
+docker compose exec -T wordpress php -r 'eval(getenv("WORDPRESS_CONFIG_EXTRA")); var_dump(DISABLE_WP_CRON);'  # bool(true)
+docker compose run --rm wpcli "wp eval 'var_dump(DISABLE_WP_CRON);'"                                          # bool(true)
+docker compose logs wordpress --since 5m | grep -c "already defined"                                          # 0
+```
 
 ## Prerequisites
 
