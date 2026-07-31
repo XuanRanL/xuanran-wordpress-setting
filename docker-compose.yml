@@ -23,6 +23,9 @@ services:
         define('WP_REDIS_PORT', 6379);
         define('WP_REDIS_DATABASE', 0);
         define('WP_REDIS_MAXTTL', 43200);
+        // FlyingPress preload queue runs 1 URL at a time by default, so a purge on a
+        // multi-language site takes tens of minutes to drain (plugin caps this at 4).
+        define('FLYING_PRESS_PRELOAD_CONCURRENCY', 3);
     volumes:
       - ./html:/var/www/html
       - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
@@ -196,6 +199,9 @@ services:
         // (which already eval()s WORDPRESS_CONFIG_EXTRA) emits
         // "Constant DISABLE_WP_CRON already defined" on every request.
         define('DISABLE_WP_CRON', true);
+        // FlyingPress preload queue runs 1 URL at a time by default, so a purge on a
+        // multi-language site takes tens of minutes to drain (plugin caps this at 4).
+        define('FLYING_PRESS_PRELOAD_CONCURRENCY', 3);
     volumes:
       - ./html:/var/www/html
       - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
