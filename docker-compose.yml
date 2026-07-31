@@ -52,7 +52,8 @@ services:
     depends_on:
       - wordpress
     ports:
-      - "${NGINX_PORT}:80"    # Cloudflare Tunnel connects here; set per-site in .env
+      - "127.0.0.1:${NGINX_PORT}:80"    # Cloudflare Tunnel connects here; set per-site in .env
+      # 20260731 收紧：仅本机可达，cloudflared 经 localhost 回源，杜绝绕过 Cloudflare 直连源站
     volumes:
       - ./html:/var/www/html:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -66,7 +67,7 @@ services:
       # the Cloudflare tunnel). We use no nginx-level cache, so the dir isn't needed.
     healthcheck:
       # Force IPv4 to avoid localhost resolving to IPv6 (::1) where nginx is not listening
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -T 5 -qO- http://127.0.0.1/healthz >/dev/null && wget -T 5 -qO- http://127.0.0.1:8080/_fpm_ping | grep -q pong"]
       interval: 30s
       timeout: 5s
       retries: 5
