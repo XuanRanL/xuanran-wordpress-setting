@@ -162,27 +162,6 @@ services:
         max-file: "3"
     restart: always
 
-  phpmyadmin:
-    image: phpmyadmin:5.2.1-apache
-    environment:
-      PMA_HOST: db
-      PMA_PORT: 3306
-      UPLOAD_LIMIT: 256M       # allow large .sql imports
-    ports:
-      - "127.0.0.1:${PMA_PORT}:80"   # localhost only; tunnel separately if needed
-    depends_on:
-      - db
-    # Cap the docker json-file log. Docker's default is UNBOUNDED -- the log only
-    # ever resets when the container is *recreated*, so long-lived sites silently
-    # accumulate. Measured on the 12-site fleet 2026-07-29 before this landed:
-    # 751MB of container logs, single containers at 78-134MB.
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "3"
-    restart: always
-
   wpcli:
     build:
       context: .

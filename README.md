@@ -2,7 +2,7 @@
 
 Opinionated, production-tuned WordPress stack used as the **base template for new
 sites**. Each site is one `docker compose` project (WordPress PHP-FPM, nginx,
-MySQL, Redis, phpMyAdmin, WP-CLI) sitting behind a Cloudflare Zero Trust tunnel.
+MySQL, Redis, WP-CLI) sitting behind a Cloudflare Zero Trust tunnel.
 
 Caching/perf plugins assumed per site: **FlyingPress** (full-page cache),
 **Redis Object Cache**, **Imagify** (AVIF/WebP).
@@ -19,7 +19,7 @@ Caching/perf plugins assumed per site: **FlyingPress** (full-page cache),
 | WP-Cron | `DISABLE_WP_CRON=true` + external system cron | reliable on low traffic, no TTFB hit |
 | Logging | `json-file`, `max-size 20m` × `max-file 3` per service | Docker's default is **unbounded** (see below) |
 | php-fpm access log | `/dev/null` | nginx already logs the same requests, auth user included |
-| Ports | `NGINX_PORT` / `PMA_PORT` from `.env` | drop-in per-site, no editing compose |
+| Ports | `NGINX_PORT` from `.env` | drop-in per-site, no editing compose |
 
 ### Two logging gotchas this template fixes (added 2026-07-29)
 
@@ -55,13 +55,13 @@ docker compose logs wordpress --since 5m | grep -c "already defined"            
 ## Prerequisites
 
 - Docker Compose v2
-- A `.env` (copy from `.env.example`) with DB creds + unique `NGINX_PORT` / `PMA_PORT`
+- A `.env` (copy from `.env.example`) with DB creds + a unique `NGINX_PORT`
 - A Cloudflare Tunnel forwarding HTTPS to `http://localhost:<NGINX_PORT>`
 
 ## New-site setup
 
 ```bash
-cp .env.example .env        # set DB creds + a UNIQUE NGINX_PORT / PMA_PORT + SITE_DOMAIN
+cp .env.example .env        # set DB creds + a UNIQUE NGINX_PORT + SITE_DOMAIN
 ./scripts/bootstrap-wordpress.sh
 ```
 
