@@ -23,9 +23,17 @@ services:
         define('WP_REDIS_PORT', 6379);
         define('WP_REDIS_DATABASE', 0);
         define('WP_REDIS_MAXTTL', 43200);
-        // FlyingPress preload queue runs 1 URL at a time by default, so a purge on a
-        // multi-language site takes tens of minutes to drain (plugin caps this at 4).
-        define('FLYING_PRESS_PRELOAD_CONCURRENCY', 3);
+        // FlyingPress preload concurrency. Plugin default 1, hard cap 4.
+        // KEEP THIS AT 1 ON A MULTI-SITE HOST. Raising it speeds up a single
+        // site's purge drain, but the cost is multiplied by every site sharing
+        // the box: a preload task FETCHES the page over HTTP, so each runner
+        // also ties up a second worker to render it. At 3, nine sites purging
+        // together (xuanran-ml's backlog-drained edge does exactly that) put
+        // ~54 concurrent WooCommerce renders on 16 vCPU — load average 35, and
+        // public TTFB on cf-cache-status=EXPIRED pages went 0.1s -> 8-14s.
+        // Incident 2026-08-03; see skill gotcha 19. Raise ONLY on a host
+        // running a single site, and lower it back before adding a second.
+        define('FLYING_PRESS_PRELOAD_CONCURRENCY', 1);
     volumes:
       - ./html:/var/www/html
       - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
@@ -199,9 +207,17 @@ services:
         // (which already eval()s WORDPRESS_CONFIG_EXTRA) emits
         // "Constant DISABLE_WP_CRON already defined" on every request.
         define('DISABLE_WP_CRON', true);
-        // FlyingPress preload queue runs 1 URL at a time by default, so a purge on a
-        // multi-language site takes tens of minutes to drain (plugin caps this at 4).
-        define('FLYING_PRESS_PRELOAD_CONCURRENCY', 3);
+        // FlyingPress preload concurrency. Plugin default 1, hard cap 4.
+        // KEEP THIS AT 1 ON A MULTI-SITE HOST. Raising it speeds up a single
+        // site's purge drain, but the cost is multiplied by every site sharing
+        // the box: a preload task FETCHES the page over HTTP, so each runner
+        // also ties up a second worker to render it. At 3, nine sites purging
+        // together (xuanran-ml's backlog-drained edge does exactly that) put
+        // ~54 concurrent WooCommerce renders on 16 vCPU — load average 35, and
+        // public TTFB on cf-cache-status=EXPIRED pages went 0.1s -> 8-14s.
+        // Incident 2026-08-03; see skill gotcha 19. Raise ONLY on a host
+        // running a single site, and lower it back before adding a second.
+        define('FLYING_PRESS_PRELOAD_CONCURRENCY', 1);
     volumes:
       - ./html:/var/www/html
       - ./php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
