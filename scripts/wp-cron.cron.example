@@ -10,6 +10,13 @@
 #   sudo sed -i 's/__DOMAIN__/canopylumen.com/; s/__PORT__/10003/' /etc/cron.d/DOMAIN-wp-cron
 #   sudo systemctl restart cron
 #
+# ⚠ FILENAME MUST NOT CONTAIN DOTS. run-parts skips /etc/cron.d entries whose
+# name has a '.' in it, SILENTLY — `canopylumen.com-wp-cron` never runs and
+# nothing logs the skip. Turn the dots into dashes when substituting DOMAIN
+# into the filename: `canopylumen-com-wp-cron` (the fleet convention).
+# Verify after install: `grep -r wp-cron /var/log/syslog` should show hits
+# within 5 minutes.
+#
 # Keep ONE cron file per site under /etc/cron.d/ (not a shared root crontab) so it
 # is self-documenting and disappears with the site. Stagger the minute field
 # across sites so they don't all fire at :00.
