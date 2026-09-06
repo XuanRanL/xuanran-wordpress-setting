@@ -114,16 +114,49 @@ Duplicator `.daparchive` into this stack. See comments at the top of each script
 
 ## Troubleshooting
 
+### Worker limits and cache consistency
+
+The nginx template sets `worker_rlimit_nofile 65535`; Compose sets the same
+`nofile` ceiling for new nginx containers. `open_file_cache max=10000` and 4,096
+connections cannot fit in a 1,024-descriptor worker budget. Descriptor exhaustion
+can make existing PHP pages and assets intermittently return 404/5xx. Verify the
+running workers' `/proc/<pid>/limits`, not only `nginx -t` or the master process.
+On an existing container whose hard limit already permits 65,535, the nginx
+directive can be applied with a graceful nginx reload; a Compose ulimit change
+only takes effect when that container is recreated.
+
+Keep **HTML edge caching off unless automatic CDN invalidation has been proved**
+for content, translation, form and template changes. FlyingPress's local purge
+does not clear Cloudflare on its own. Its `CDN-Cache-Control: max-age=2592000`
+also takes precedence over ordinary `Cache-Control: no-cache`; changing an edge
+rule to respect origin headers alone can retain HTML for 30 days. The autosetup
+companion now installs an HTML `cache:false` rule while preserving origin page
+caching and static-asset behavior. Do not use a forced two-hour TTL as a substitute
+for invalidation. See [Cloudflare header precedence](https://developers.cloudflare.com/cache/concepts/cdn-cache-control/).
+
+After an update, GET clean public HTTPS URLs twice with `curl --compressed -D`
+and inspect both response headers and the actual changed HTML. A 200 response,
+an origin-only check, or the first MISS after a purge does not prove consistency.
+
+### Existing deployments
+
 - **nginx health check stuck `starting`** — probe uses `127.0.0.1` to avoid IPv6
   mismatch; check `docker compose logs nginx` and that `wordpress` is healthy.
 - **Permission denied writing `html/`** — `sudo chown -R 33:33 html`.
 - **Cloudflare 403** — check your Access policy and that the tunnel routes to `NGINX_PORT`.
-- **Code/plugin update didn't take effect** — OPcache revalidates every 60s; wait
-  or `docker compose restart wordpress`.
+- **Code/plugin update didn't take effect** — the template enables OPcache timestamp
+  validation every 60s. Wait at least 65s, verify the actual Web runtime, clear the
+  affected page cache and inspect clean public URLs. A CLI version check is not a
+  Web-runtime check. Do not restart/reload PHP-FPM just to refresh plugin code:
+  it can interrupt active translation, backup and scheduler jobs.
 - **Edited an nginx/php conf but nothing changed** — the confs are single-file bind
-  mounts. Editing them changes the file's inode, but the running container keeps the
-  old one, so `nginx -s reload` does nothing. Apply config changes with
-  `docker compose up -d --force-recreate nginx wordpress`.
+  mounts. Replacing a file by rename changes its inode while a container can keep
+  the old mount. Back up the file, write the updated bytes **in place**, compare
+  host/container contents, then `docker compose exec -T nginx nginx -t` followed
+  by `docker compose exec -T nginx nginx -s reload`. If the inode was already
+  replaced, plan recreation of only the affected service. PHP-FPM configuration
+  changes need a separate job-drain/maintenance plan; do not recreate the full
+  WordPress stack for an nginx-only change.
 
 ## Security
 

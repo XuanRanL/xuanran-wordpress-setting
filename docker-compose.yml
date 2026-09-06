@@ -60,6 +60,12 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
+    # Keep the container ceiling consistent with worker_rlimit_nofile; do not
+    # depend on the Docker daemon's host-specific default (sometimes 1,024).
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     depends_on:
       - wordpress
     ports:
