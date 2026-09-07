@@ -153,6 +153,31 @@ providers before consumers and allow the OPcache interval to elapse. Verify the
 new methods in the Web runtime, then clear affected page caches. Avoid an FPM
 restart that would interrupt background jobs.
 
+### Translation release verification
+
+Treat visitor copy, decoded HTML text and stored translation keys as different
+interfaces. Test real WordPress contextual plurals (`_nx`), actual Elementor
+style enqueue and native form choice validation. Parsed attribute values are
+already decoded; preserve identity fallbacks and never translate machine values.
+
+A vendor language-pack update can be hidden by a previously generated global
+catalogue even when there is no new AI demand. Synchronize changed vendor values
+without purchasing translations, preserve other generated entries, respect
+installed official packs and verify PHP/MO parity for contexts, plural source
+keys, numeric keys and values equal to `"0"`. Keep existing queue argument identity
+when adding package discovery. Background editor strings are not paid demand.
+
+Run hard factual checks before soft acceptance and recheck cached outputs. Any
+bounded soft acceptance must be tied to the exact accepted translation. Do not
+clear the entire translation memory to work around a cache-contract defect.
+Before bulk retranslation after a parser change, census the actual stored input;
+valid new syntax support alone is not evidence that existing pages need rewriting.
+
+Release reports must state passed, skipped and known-fail suite counts separately.
+Remove a blanket expected-failure default only after making that fixture reliable
+and running the full release matrix. Use explicit escapes in PHP test strings
+when source checkout line endings must not alter the intended input.
+
 ### Existing deployments
 
 - **nginx health check stuck `starting`** — probe uses `127.0.0.1` to avoid IPv6
