@@ -194,6 +194,15 @@ when source checkout line endings must not alter the intended input.
   affected page cache and inspect clean public URLs. A CLI version check is not a
   Web-runtime check. Do not restart/reload PHP-FPM just to refresh plugin code:
   it can interrupt active translation, backup and scheduler jobs.
+- **Translation input changed after an HTML parser upgrade** — compare gained,
+  lost and equivalent units. A native parser may pause on an isolated iframe or
+  textarea opener until a closer is supplied. Keep any synthetic closer internal.
+  For equivalent entity-only changes, migrate exact old fingerprints with backups
+  and conditional writes; do not clear stale/review flags or buy a whole-site
+  retranslation. Treat malformed source markup separately.
+- **Clearing reviewed plugin logs** — lock and hash-check the reviewed rows, then
+  delete only their IDs transactionally. Preserve later events and system/security
+  logs; a snapshot followed by TRUNCATE can erase unreviewed concurrent events.
 - **Edited an nginx/php conf but nothing changed** — the confs are single-file bind
   mounts. Replacing a file by rename changes its inode while a container can keep
   the old mount. Back up the file, write the updated bytes **in place**, compare
