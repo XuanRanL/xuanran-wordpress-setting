@@ -138,12 +138,32 @@ After an update, GET clean public HTTPS URLs twice with `curl --compressed -D`
 and inspect both response headers and the actual changed HTML. A 200 response,
 an origin-only check, or the first MISS after a purge does not prove consistency.
 
+### Frontend translation boundaries
+
+Theme/plugin POT catalogues include licensing, editor and dashboard strings even
+when source paths do not contain `admin`. For visitor-only translation, use
+validated frontend text and interaction messages as demand; a missing complete
+POT-derived catalogue is not itself a defect. Keep CSS classes, input types,
+script configuration and literal reference URLs out of translation. Preserve
+official/vendor packs and existing approved translations when changing capture
+rules. Test both legitimate frontend prompts and machine-value exclusions.
+
+If a plugin update adds APIs used by other changed files, stage the compatible
+providers before consumers and allow the OPcache interval to elapse. Verify the
+new methods in the Web runtime, then clear affected page caches. Avoid an FPM
+restart that would interrupt background jobs.
+
 ### Existing deployments
 
 - **nginx health check stuck `starting`** — probe uses `127.0.0.1` to avoid IPv6
   mismatch; check `docker compose logs nginx` and that `wordpress` is healthy.
 - **Permission denied writing `html/`** — `sudo chown -R 33:33 html`.
 - **Cloudflare 403** — check your Access policy and that the tunnel routes to `NGINX_PORT`.
+  For authorized automation, load that site's configured header name and token
+  from its private credential store; do not assume a universal header name or
+  that another site's credentials apply. Never forward them across hosts or
+  downgrade redirects. Record anonymous challenges separately from authorized
+  HTTPS and origin checks; none substitutes for a real browser acceptance test.
 - **Code/plugin update didn't take effect** — the template enables OPcache timestamp
   validation every 60s. Wait at least 65s, verify the actual Web runtime, clear the
   affected page cache and inspect clean public URLs. A CLI version check is not a
