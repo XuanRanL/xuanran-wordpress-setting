@@ -178,7 +178,27 @@ Remove a blanket expected-failure default only after making that fixture reliabl
 and running the full release matrix. Use explicit escapes in PHP test strings
 when source checkout line endings must not alter the intended input.
 
-### Existing deployments
+### Imagify image delivery
+
+Verify compression and delivery separately. A PNG may already be compressed;
+Imagify can intentionally omit a full-size AVIF if it is larger. Inspect actual
+sidecars, the installed version's `optimization_format` option and the browser's
+`currentSrc`. Do not infer that conversion is off from legacy conversion flags.
+
+Imagify 2.3.4's picture renderer can skip an image whose full-size sidecar is
+missing even when responsive sidecars exist. For a confirmed case, use the
+autosetup skill's optional `xuanran-imagify-responsive.php` compatibility MU
+plugin and image-delivery reference. Measure each site's logo slot before setting
+its attachment allowlist; do not bake a site's ID or dimensions into this stack.
+The compatibility layer uses existing uncropped candidates and per-format DPR
+limits, retaining the original responsive fallback. Recheck after Imagify updates.
+
+Acceptance includes actual mobile/desktop image selection, translated alt text,
+unchanged layout and two clean public GETs after affected HTML invalidation.
+Retain FlyingPress page caching and Cloudflare HTML bypass. An explicit AVIF URL
+can cache as a static asset without changing HTML or PNG/JPEG negotiation rules.
+
+### Existing-deployment troubleshooting
 
 - **nginx health check stuck `starting`** — probe uses `127.0.0.1` to avoid IPv6
   mismatch; check `docker compose logs nginx` and that `wordpress` is healthy.
