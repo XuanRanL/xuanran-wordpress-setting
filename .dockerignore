@@ -1,0 +1,15 @@
+.git
+.env
+html
+db_data
+nginx_cache
+.restore-work
+.restore-backups
+.stack-operation.lock
+__pycache__
+**/__pycache__
+*.daf
+*.sql
+*.tar
+*.tar.gz
+*_installer.php

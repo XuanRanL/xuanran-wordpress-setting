@@ -5,6 +5,10 @@
 html/
 db_data/
 nginx_cache/
+.restore-work/
+.restore-backups/
+.stack-operation.lock
+__pycache__/
 
 # Local backups and editor noise
 *.bak

@@ -7,6 +7,11 @@ MySQL, Redis, WP-CLI) sitting behind a Cloudflare Zero Trust tunnel.
 Caching/perf plugins assumed per site: **FlyingPress** (full-page cache),
 **Redis Object Cache**, **Imagify** (AVIF/WebP).
 
+Before building, bootstrapping or restoring, read the
+[build and restore contract](docs/hardening-and-restore.md). It documents the
+pinned images, readiness checks, recovery snapshots and existing-site migration
+requirements. New Compose healthchecks require the matching new FPM image.
+
 ## What this template bakes in
 
 | Layer | Choice | Why |
@@ -109,8 +114,23 @@ before starting. WordPress needs write access to `/var/www/html` for upgrades/pl
 
 ## Migrating an existing site in (Duplicator)
 
-`scripts/restore-from-duplicator.sh` + `scripts/extract-duparchive.php` restore a
-Duplicator `.daparchive` into this stack. See comments at the top of each script.
+Install Python 3, Bash/coreutils, `flock` (util-linux), rsync, tar, curl and
+Docker Compose v2 with JSON config and `up --wait`. Build the wpcli image first.
+Synchronize the complete helper list in the
+[restore contract](docs/hardening-and-restore.md#existing-site-restore-compatibility).
+Pause external cron/queue writers and supply explicit source/destination URLs:
+
+```bash
+NEW_URL=https://site.example OLD_URL=https://old.example \
+MAINTENANCE_CONFIRMED=1 FORCE=1 \
+  bash scripts/restore-from-duplicator.sh archive.daf installer.php
+```
+
+`FORCE=1` permits replacing an existing database. The script takes a recovery
+snapshot before replacement, keeps the input/recovery files and fails closed.
+On failure after stopping the site, inspect the retained snapshot and logs
+before restarting services. Do not invoke restoration merely to synchronize
+script updates onto an existing site.
 
 ## Troubleshooting
 

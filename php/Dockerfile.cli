@@ -1,4 +1,19 @@
-FROM wordpress:cli
+FROM wordpress:cli-2.12.0-php8.3@sha256:46b3add1dbd834018a9c22bb05a2fa9303f6139d8ac7337dc97cf9424072cd77
 USER root
-RUN /sbin/apk add --update --no-cache autoconf gcc make build-base pkgconf && pecl install redis && docker-php-ext-enable redis
+RUN set -eux; \
+    apk add --no-cache mariadb-connector-c; \
+    apk add --no-cache --virtual .redis-build-deps $PHPIZE_DEPS; \
+    pecl install redis-6.3.0; \
+    docker-php-ext-enable redis; \
+    apk del --no-network .redis-build-deps; \
+    rm -rf /tmp/pear; \
+    php --ri redis; \
+    test -f /usr/lib/mariadb/plugin/caching_sha2_password.so; \
+    ! command -v gcc
+COPY php/mysql-client-policy.sh /usr/local/lib/mysql-client-policy.sh
+COPY php/mysql-local-client.sh /usr/local/bin/mysql-local-client
+RUN chmod 755 /usr/local/bin/mysql-local-client; \
+    for client in mysql mysqldump mysqlcheck mariadb mariadb-dump mariadb-check; do \
+        ln -s mysql-local-client /usr/local/bin/$client; \
+    done
 USER www-data

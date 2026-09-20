@@ -1,0 +1,32 @@
+name: Stack reliability regressions
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Isolated restore and configuration regressions
+        run: python -m unittest discover -s tests -v
+      - name: Shell syntax
+        run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build locked base and extension
+        run: |
+          docker build -f php/Dockerfile -t xr-ci:fpm .
+          docker build -f php/Dockerfile.cli -t xr-ci:cli .
+      - name: Runtime extension and build-tool removal
+        run: |
+          for flavor in fpm cli; do
+            docker run --rm --network none --memory 128m --entrypoint sh "xr-ci:$flavor" \
+              -c 'php --ri redis && php -v && ! command -v gcc && ! command -v make'
+          done
+      - name: Fresh startup, credential preservation and real MySQL compatibility
+        run: python3 tests/smoke_stack.py
