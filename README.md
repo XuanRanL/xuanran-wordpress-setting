@@ -20,7 +20,7 @@ requirements. New Compose healthchecks require the matching new FPM image.
 | PHP OPcache | JIT **off**, `validate_timestamps=1` (60s) | stable with Wordfence/heavy plugins; updates auto-apply |
 | Redis | `maxmemory 256mb`, `allkeys-lru`, no persistence | pure object cache, bounded RAM |
 | nginx | AVIF/WebP sidecars, admin-ajax/wp-cron 2h timeouts, big fastcgi buffers, real-IP incl. docker bridge | image perf + long admin jobs + correct visitor IPs |
-| Page cache | **FlyingPress only** (no nginx fastcgi_cache) | one smart, self-purging layer — no stale duplicates |
+| Page cache | **FlyingPress only** (no nginx fastcgi_cache); refreshed by re-rendering in place, never by a scheduled purge-all | one layer, no stale duplicates, never cold |
 | WP-Cron | `DISABLE_WP_CRON=true` + external system cron | reliable on low traffic, no TTFB hit |
 | Logging | `json-file`, `max-size 20m` × `max-file 3` per service | Docker's default is **unbounded** (see below) |
 | php-fpm access log | `/dev/null` | nginx already logs the same requests, auth user included |
@@ -145,14 +145,26 @@ On an existing container whose hard limit already permits 65,535, the nginx
 directive can be applied with a graceful nginx reload; a Compose ulimit change
 only takes effect when that container is recreated.
 
-Keep **HTML edge caching off unless automatic CDN invalidation has been proved**
-for content, translation, form and template changes. FlyingPress's local purge
-does not clear Cloudflare on its own. Its `CDN-Cache-Control: max-age=2592000`
-also takes precedence over ordinary `Cache-Control: no-cache`; changing an edge
-rule to respect origin headers alone can retain HTML for 30 days. The autosetup
-companion now installs an HTML `cache:false` rule while preserving origin page
-caching and static-asset behavior. Do not use a forced two-hour TTL as a substitute
-for invalidation. See [Cloudflare header precedence](https://developers.cloudflare.com/cache/concepts/cdn-cache-control/).
+**HTML at the Cloudflare edge (current policy, set by the autosetup companion).**
+Anonymous HTML is edge-cached for 2 hours (`override_origin 7200`, the Free-plan
+minimum) with WooCommerce-safe bypasses — cart/checkout/account paths and the
+login, cart and `wp_woocommerce_session_` cookies. Nothing purges automatically:
+the edge follows the origin within the TTL, and the origin re-renders every page
+in place on a rolling preload. Three details matter:
+- The rule matches `GET` **and** `PURGE`. A GET-only cache rule makes single-file
+  purge a silent no-op ([Cloudflare](https://developers.cloudflare.com/cache/how-to/purge-cache/purge-by-single-file/)).
+- A Cache Response Rule sets `no-store` for responses carrying
+  `x-flying-press-cache: MISS` or `Cache-Control: no-store`. `override_origin`
+  otherwise keeps FlyingPress's unoptimized first render for the whole TTL.
+- Do not switch the rule to "respect origin": FlyingPress sends
+  `CDN-Cache-Control: max-age=2592000`, which outranks `Cache-Control: no-cache`, so
+  HTML would stay at the edge for 30 days ([header precedence](https://developers.cloudflare.com/cache/concepts/cdn-cache-control/)).
+
+WordPress nonces embedded in cached pages expire after 12–24h. Keep cached pages younger
+than that, or lengthen only logged-out nonces (the autosetup companion ships a small MU
+plugin for it). A bot challenge on **static files** also breaks FlyingPress's cloud
+optimizer, which fetches CSS/JS from Cloudflare's network, and unused-CSS removal then
+silently returns nothing. Exclude static extensions from challenge rules.
 
 After an update, GET clean public HTTPS URLs twice with `curl --compressed -D`
 and inspect both response headers and the actual changed HTML. A 200 response,
@@ -215,7 +227,7 @@ limits, retaining the original responsive fallback. Recheck after Imagify update
 
 Acceptance includes actual mobile/desktop image selection, translated alt text,
 unchanged layout and two clean public GETs after affected HTML invalidation.
-Retain FlyingPress page caching and Cloudflare HTML bypass. An explicit AVIF URL
+Retain FlyingPress page caching and the 2-hour HTML edge rule. An explicit AVIF URL
 can cache as a static asset without changing HTML or PNG/JPEG negotiation rules.
 
 ### Existing-deployment troubleshooting
