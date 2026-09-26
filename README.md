@@ -87,7 +87,7 @@ sudo sed -i 's/__DOMAIN__/<domain>/; s/__PORT__/<NGINX_PORT>/' /etc/cron.d/<doma
 sudo systemctl restart cron
 ```
 
-One file per site under `/etc/cron.d/`; stagger the minute field so sites don't all fire at once.
+One file per site under `/etc/cron.d/`; stagger the minute field so sites don't all fire at once. Sites running the xuanran-ml translation plugin need the **every-minute** line from the example instead (Action Scheduler takes about one long job per tick).
 
 ## Cloudflare Zero Trust / arbitrary hostnames
 

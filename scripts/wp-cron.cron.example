@@ -24,3 +24,9 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 */5 * * * * root curl -fsS --max-time 60 -H 'Host: __DOMAIN__' 'http://127.0.0.1:__PORT__/wp-cron.php?doing_wp_cron' >/dev/null 2>&1
+
+# xuanran-ml translation sites: EVERY MINUTE instead (use this line, not the one above). Action Scheduler
+# claims about one long translation/media job per wp-cron tick, so the 5-minute tick caps a site at ~12 jobs
+# per hour (fleet standard since 2026-08-06/08-21; four TranslatePress-migrated sites were found still on 5 min
+# on 2026-09-25). Stagger sites by the sleep second (0, 15, 30, 45).
+# * * * * * root sleep 15; curl -fsS --max-time 60 -H 'Host: __DOMAIN__' 'http://127.0.0.1:__PORT__/wp-cron.php?doing_wp_cron' >/dev/null 2>&1
