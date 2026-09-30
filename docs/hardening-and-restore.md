@@ -86,12 +86,16 @@ third-party Duplicator/WordPress/plugin version.
 
 ## Image provenance and verification
 
-Registry manifests were checked on 2026-09-20 against
+Registry manifests were checked against
 `registry-1.docker.io/v2/library/wordpress/manifests/<tag>` (HTTP 200 plus
-Docker-Content-Digest), and Redis against the official PECL stable release:
+Docker-Content-Digest), and Redis against the official PECL stable release.
+The WordPress bases were advanced on 2026-09-30 from PHP 8.3.33
+(`7.1.1-php8.3-fpm` `f62a39d3…`, `cli-2.12.0-php8.3` `46b3add1…`) to the
+PHP 8.3.35 security release; the FPM image was accepted live on
+cigarettes-vapes-canada.com first:
 
-- `wordpress:7.1.1-php8.3-fpm` — `sha256:f62a39d3e301cc081fd13a470fc8614c0a11e67722a54f1151f7fa075b6b6263`
-- `wordpress:cli-2.12.0-php8.3` — `sha256:46b3add1dbd834018a9c22bb05a2fa9303f6139d8ac7337dc97cf9424072cd77`
+- `wordpress:7.1.2-php8.3-fpm` (PHP 8.3.35) — `sha256:6f7b6caf88576b527fec7897b929a67f8a4ca2e4b6e76a920181613630ba1bcb`
+- `wordpress:cli-2.12.0-php8.3` (PHP 8.3.35) — `sha256:36243da432a0f0a3b56dc3240ecee9b159108d71305e7c064d987a20a465bfde`
 - PECL Redis `6.3.0` in both images.
 
 Compose runtime images are also pinned, without changing their selected versions:
