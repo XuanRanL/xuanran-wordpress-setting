@@ -16,8 +16,8 @@ requirements. New Compose healthchecks require the matching new FPM image.
 
 | Layer | Choice | Why |
 |------|--------|-----|
-| MySQL | 8.4.8, `--skip-log-bin`, redo-log 512M | current LTS; no binlog (no replication/PITR) saves IO |
-| PHP OPcache | JIT **off**, `validate_timestamps=1` (60s) | stable with Wordfence/heavy plugins; updates auto-apply |
+| MySQL | 8.4.13, `--skip-log-bin`, redo-log 512M | current LTS; no binlog (no replication/PITR) saves IO |
+| PHP OPcache | 512 MB, interned strings 128 MB, JIT **off**, `validate_timestamps=1` (60s) | WooCommerce + builder theme + translation plugin fill 256/32; stable with Wordfence/heavy plugins; updates auto-apply |
 | Redis | `maxmemory 256mb`, `allkeys-lru`, no persistence | pure object cache, bounded RAM |
 | nginx | AVIF/WebP sidecars, admin-ajax/wp-cron 2h timeouts, big fastcgi buffers, real-IP incl. docker bridge | image perf + long admin jobs + correct visitor IPs |
 | Page cache | **FlyingPress only** (no nginx fastcgi_cache); refreshed by re-rendering in place, never by a scheduled purge-all | one layer, no stale duplicates, never cold |
@@ -246,6 +246,16 @@ can cache as a static asset without changing HTML or PNG/JPEG negotiation rules.
   affected page cache and inspect clean public URLs. A CLI version check is not a
   Web-runtime check. Do not restart/reload PHP-FPM just to refresh plugin code:
   it can interrupt active translation, backup and scheduler jobs.
+- **OPcache full ("restart pending", catalogue/cache refresh refused, pages slow)** —
+  read the status from inside PHP-FPM, not the CLI: a token-gated one-request
+  mu-plugin printing `opcache_get_status(false)` works. Healthy means
+  `restart_pending` false, `memory_usage.free_memory` at least 5% of the total,
+  `interned_strings_usage.free_memory` above 0, and `opcache_statistics.oom_restarts`
+  not growing. Sites made from a template before 2026-10-25 run 256/32: raise them to
+  the current `php/opcache.ini` values. Edit the bind-mounted file **in place**, drain
+  active translation/backup/scheduler jobs, restart only the PHP container (the sizes
+  are reserved at start; a reload keeps the old ones), confirm HTTP 200 and the new
+  values from PHP-FPM, then resume the jobs. One site at a time.
 - **Translation input changed after an HTML parser upgrade** — compare gained,
   lost and equivalent units. A native parser may pause on an isolated iframe or
   textarea opener until a closer is supplied. Keep any synthetic closer internal.

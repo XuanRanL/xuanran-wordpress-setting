@@ -89,25 +89,28 @@ third-party Duplicator/WordPress/plugin version.
 Registry manifests were checked against
 `registry-1.docker.io/v2/library/wordpress/manifests/<tag>` (HTTP 200 plus
 Docker-Content-Digest), and Redis against the official PECL stable release.
-The WordPress bases were advanced on 2026-09-30 from PHP 8.3.33
-(`7.1.1-php8.3-fpm` `f62a39d3…`, `cli-2.12.0-php8.3` `46b3add1…`) to the
-PHP 8.3.35 security release; the FPM image was accepted live on
-cigarettes-vapes-canada.com first:
+On 2026-10-25 the pins were advanced to what the running fleet uses: every
+one of 29 production sites ran PHP 8.3.36 on `wordpress:7.1.3-php8.3-fpm`,
+nginx 1.30.6, MySQL 8.4.13 and Redis 8.10.2 with this template's configuration.
+The digests below are the registry's current multi-arch manifests for those
+tags (inspected with `docker buildx imagetools inspect`); the nginx, MySQL and
+Redis digests are byte-identical to the images the fleet runs, and the CLI
+digest resolves to the same build (created 2026-10-21 23:26Z). The FPM tag's
+current manifest is a PHP 8.3.36 build from 2026-10-21 16:30Z; production sites
+built from the same tag about an hour later, so the pinned build is the
+registry's, not byte-identical to a running site. Previous pins: PHP 8.3.35
+(`7.1.2-php8.3-fpm` `6f7b6caf…`, `cli-2.12.0-php8.3` `36243da4…`, 2026-09-30),
+nginx 1.27, MySQL 8.4.8, Redis 7.4.11.
 
-- `wordpress:7.1.2-php8.3-fpm` (PHP 8.3.35) — `sha256:6f7b6caf88576b527fec7897b929a67f8a4ca2e4b6e76a920181613630ba1bcb`
-- `wordpress:cli-2.12.0-php8.3` (PHP 8.3.35) — `sha256:36243da432a0f0a3b56dc3240ecee9b159108d71305e7c064d987a20a465bfde`
-- PECL Redis `6.3.0` in both images.
+- `wordpress:7.1.3-php8.3-fpm` (PHP 8.3.36) — `sha256:788d6b34cb89997483ff2a08e2e04d1df28ce284ca046cd7990b0be10828c5b9`
+- `wordpress:cli-2.12.0-php8.3` (PHP 8.3.36) — `sha256:661db880e953da051abcac6c0a769767b995a82cd52101c003ca7438dd427d7d`
+- PECL Redis `6.3.0` in both images (the same on the fleet).
 
-Compose runtime images are also pinned, without changing their selected versions:
+Compose runtime images:
 
-- `nginx:1.27-alpine` — `sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10`
-- `mysql:8.4.8` — `sha256:2952e3be7807f06fc18de50b3ea1a632d5c70d63482ff7d7376fe3aa8999babf`
-- `redis:7-alpine` (Redis 7.4.11) — `sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf`
-
-These manifests were verified directly from the official registry on 2026-09-20
-and match the images used by the real bootstrap acceptance test. The current
-Redis floating tag resolves to a newer OS rebuild of the same Redis 7.4.11;
-the pin deliberately retains the tested manifest above. Digest updates remain
+- `nginx:1.30-alpine` (nginx 1.30.6) — `sha256:47928bf67eb62a1863cb08d9ecb52d3e704304ba614eaee17884204677702951`
+- `mysql:8.4.13` — `sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69`
+- `redis:8.10.2-alpine3.23` (Redis 8.10.2) — `sha256:0bf6577d7774e592b29d093e3ac9390eb91e13d72c21e506afce736de5e0eeb0` Digest updates remain
 an explicit reviewed change. nginx's healthcheck timeout is 12 seconds to cover
 both sequential five-second probes with startup/pipe margin.
 
