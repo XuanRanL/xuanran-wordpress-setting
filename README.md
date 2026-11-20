@@ -128,6 +128,10 @@ One file per site under `/etc/cron.d/`; stagger the minute field so sites don't 
   and do **not** enable HTTP host rewrites.
 - `nginx/conf.d/cloudflare-realip.conf` trusts Cloudflare ranges **and** the
   docker bridge (`172.16.0.0/12`) so `$remote_addr` reflects the real visitor.
+- Every WordPress PHP location passes that address to PHP as `X-Real-IP`
+  (`fastcgi_param HTTP_X_REAL_IP $remote_addr;`), replacing whatever the visitor sent under that name:
+  WooCommerce reads the header before `REMOTE_ADDR` for the address it stores on an order, and the fleet's
+  checkout guard (`xuanran-checkout-guard.php`, autosetup step 3f-2) limits orders and new accounts per address.
 - Lock down later by replacing `_` with your explicit domains.
 
 ## Optional: serve FlyingPress cache from nginx (max speed)
