@@ -89,28 +89,29 @@ third-party Duplicator/WordPress/plugin version.
 Registry manifests were checked against
 `registry-1.docker.io/v2/library/wordpress/manifests/<tag>` (HTTP 200 plus
 Docker-Content-Digest), and Redis against the official PECL stable release.
-On 2026-10-25 the pins were advanced to what the running fleet uses: every
-one of 29 production sites ran PHP 8.3.36 on `wordpress:7.1.3-php8.3-fpm`,
-nginx 1.30.6, MySQL 8.4.13 and Redis 8.10.2 with this template's configuration.
-The digests below are the registry's current multi-arch manifests for those
-tags (inspected with `docker buildx imagetools inspect`); the nginx, MySQL and
-Redis digests are byte-identical to the images the fleet runs, and the CLI
-digest resolves to the same build (created 2026-10-21 23:26Z). The FPM tag's
-current manifest is a PHP 8.3.36 build from 2026-10-21 16:30Z; production sites
-built from the same tag about an hour later, so the pinned build is the
-registry's, not byte-identical to a running site. Previous pins: PHP 8.3.35
-(`7.1.2-php8.3-fpm` `6f7b6caf…`, `cli-2.12.0-php8.3` `36243da4…`, 2026-09-30),
-nginx 1.27, MySQL 8.4.8, Redis 7.4.11.
+On 2026-11-19 the pins were advanced to what the running fleet uses after the
+PHP security releases of that day (8.3.37: PHP-FPM request smuggling, session and
+timezone-cache code execution, 13 CVEs): 27 production sites run PHP 8.3.37 and two
+run 8.5.13, all with nginx 1.30.7, MySQL 8.4.13 and Redis 8.10.3 and this template's
+configuration. The digests below are the registry's current multi-arch manifests
+for those tags (inspected with `docker buildx imagetools inspect` on 2026-11-19);
+the nginx, MySQL and Redis digests are the ones the fleet's pinned site runs, and
+both WordPress images were started from these digests and report PHP 8.3.37 (FPM
+build created 2026-11-19 14:53Z, CLI 14:55Z, WP-CLI 2.12.0). Previous pins: PHP
+8.3.36 (`7.1.3-php8.3-fpm` `788d6b34…`, `cli-2.12.0-php8.3` `661db880…`, nginx
+1.30.6 `47928bf6…`, MySQL `76f03588…`, Redis 8.10.2 `0bf6577d…`, 2026-10-25); PHP
+8.3.35 (`7.1.2-php8.3-fpm` `6f7b6caf…`, `cli-2.12.0-php8.3` `36243da4…`,
+2026-09-30), nginx 1.27, MySQL 8.4.8, Redis 7.4.11.
 
-- `wordpress:7.1.3-php8.3-fpm` (PHP 8.3.36) — `sha256:788d6b34cb89997483ff2a08e2e04d1df28ce284ca046cd7990b0be10828c5b9`
-- `wordpress:cli-2.12.0-php8.3` (PHP 8.3.36) — `sha256:661db880e953da051abcac6c0a769767b995a82cd52101c003ca7438dd427d7d`
+- `wordpress:7.1.5-php8.3-fpm` (PHP 8.3.37) — `sha256:68422e7571344a1ce0e4625d91e825d0accecdff83f0593db36ccf2bbce06744`
+- `wordpress:cli-2.12.0-php8.3` (PHP 8.3.37) — `sha256:14ad78160eba4c1ee30b33f9edeb44341c0de28a051fc472ee60136c775f0f0f`
 - PECL Redis `6.3.0` in both images (the same on the fleet).
 
 Compose runtime images:
 
-- `nginx:1.30-alpine` (nginx 1.30.6) — `sha256:47928bf67eb62a1863cb08d9ecb52d3e704304ba614eaee17884204677702951`
-- `mysql:8.4.13` — `sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69`
-- `redis:8.10.2-alpine3.23` (Redis 8.10.2) — `sha256:0bf6577d7774e592b29d093e3ac9390eb91e13d72c21e506afce736de5e0eeb0` Digest updates remain
+- `nginx:1.30-alpine` (nginx 1.30.7) — `sha256:3bc3836dc0be3b811f238210360bf8e7ca8a2d0effdae46160bf1f3578710051`
+- `mysql:8.4.13` — `sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902`
+- `redis:8.10.3-alpine3.23` (Redis 8.10.3) — `sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3` Digest updates remain
 an explicit reviewed change. nginx's healthcheck timeout is 12 seconds to cover
 both sequential five-second probes with startup/pipe margin.
 

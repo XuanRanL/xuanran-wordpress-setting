@@ -16,7 +16,8 @@ requirements. New Compose healthchecks require the matching new FPM image.
 
 | Layer | Choice | Why |
 |------|--------|-----|
-| MySQL | 8.4.13, `--skip-log-bin`, redo-log 512M | current LTS; no binlog (no replication/PITR) saves IO |
+| MySQL | 8.4.13, `--skip-log-bin`, redo-log 512M, redo log flushed at every commit | current LTS; no binlog (no replication/PITR) saves IO; a committed order survives a power cut (see "MySQL durability") |
+| WordPress | built-in code editor off (`DISALLOW_FILE_EDIT`); core installs minor releases only by itself (`WP_AUTO_UPDATE_CORE='minor'`) | a stolen admin login cannot rewrite PHP from wp-admin, while installing and updating plugins there still works; a new major version is tested on one site first |
 | PHP OPcache | 512 MB, interned strings 128 MB, JIT **off**, `validate_timestamps=1` (60s) | WooCommerce + builder theme + translation plugin fill 256/32; stable with Wordfence/heavy plugins; updates auto-apply |
 | Redis | `maxmemory 256mb`, `allkeys-lru`, no persistence | pure object cache, bounded RAM |
 | nginx | AVIF/WebP sidecars, admin-ajax/wp-cron 2h timeouts, big fastcgi buffers, real-IP incl. docker bridge | image perf + long admin jobs + correct visitor IPs |
@@ -56,6 +57,37 @@ docker compose exec -T wordpress php -r 'eval(getenv("WORDPRESS_CONFIG_EXTRA"));
 docker compose run --rm wpcli "wp eval 'var_dump(DISABLE_WP_CRON);'"                                          # bool(true)
 docker compose logs wordpress --since 5m | grep -c "already defined"                                          # 0
 ```
+
+### WordPress settings (added 2026-11-19)
+
+`WORDPRESS_CONFIG_EXTRA` turns the built-in theme/plugin code editor off and limits
+WordPress's own core updates to minor releases. What an administrator can still do
+was checked on five production sites: install, upload, update and delete plugins and
+themes, update core by hand. Only the two "file editor" screens are gone. Do not add
+the constant that forbids file changes altogether: the owner updates plugins in
+wp-admin. A new major version (7.2, ...) is installed by hand after a test on one
+site; the option on Dashboard > Updates no longer decides this.
+
+```bash
+docker compose exec -T wordpress php -r 'eval(getenv("WORDPRESS_CONFIG_EXTRA")); var_dump(DISALLOW_FILE_EDIT, WP_AUTO_UPDATE_CORE);'  # bool(true) string(5) "minor"
+```
+
+### MySQL durability (added 2026-11-19)
+
+The redo log is flushed at every commit (`innodb-flush-log-at-trx-commit=1`): an order
+the shop has confirmed is on disk. The earlier value 2 flushes once per second and can
+lose that second when the machine loses power. The price of 1 is one synced write per
+commit, so measure the data disk before choosing:
+
+```bash
+dd if=/dev/zero of=./.sync-test bs=4k count=300 oflag=dsync; rm -f ./.sync-test   # run in the site directory
+```
+
+300 writes in 0.3 s is about 1 ms each (5800h, 2026-11-19): keep 1. In 2 s it is about
+7 ms each (ssh2's data disk): checkout, admin saves and bulk jobs slow down visibly, so
+that host keeps 2 with `MYSQL_FLUSH_LOG_AT_TRX_COMMIT=2` in the site's `.env`. Changing
+the value needs the database container replaced (`docker stop -t 300 <db>`, then
+`docker compose up -d --no-deps db`).
 
 ## Prerequisites
 

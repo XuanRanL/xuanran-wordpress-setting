@@ -12,7 +12,14 @@ services:
         define('WP_ENVIRONMENT_TYPE', 'production');
         define('WP_MEMORY_LIMIT', '1024M');
         define('WP_MAX_MEMORY_LIMIT', '1024M');
-        define('DISALLOW_FILE_EDIT', false);
+        // The built-in theme/plugin code editor is off: an administrator account that falls into the wrong
+        // hands cannot rewrite PHP files from wp-admin. Installing, updating and deleting plugins and themes
+        // in wp-admin is NOT affected (that would be the FILE_MODS constant, which this fleet never sets:
+        // the owner updates plugins by hand).
+        define('DISALLOW_FILE_EDIT', true);
+        // WordPress installs security and maintenance releases (7.1.x) by itself. A new major version (7.2)
+        // is installed by hand after a test on one site: 30 stores must not change major version overnight.
+        define('WP_AUTO_UPDATE_CORE', 'minor');
         if (!defined('WP_CACHE')) define('WP_CACHE', true);
         // WP-Cron is fired by an EXTERNAL system cron (see scripts/wp-cron.cron.example),
         // never on visitor requests. This keeps TTFB low and guarantees scheduled
@@ -61,7 +68,7 @@ services:
     restart: always
 
   nginx:
-    image: nginx:1.30-alpine@sha256:47928bf67eb62a1863cb08d9ecb52d3e704304ba614eaee17884204677702951
+    image: nginx:1.30-alpine@sha256:3bc3836dc0be3b811f238210360bf8e7ca8a2d0effdae46160bf1f3578710051
     # Keep the container ceiling consistent with worker_rlimit_nofile; do not
     # depend on the Docker daemon's host-specific default (sometimes 1,024).
     ulimits:
@@ -104,14 +111,17 @@ services:
     restart: always
 
   db:
-    image: mysql:8.4.13@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
+    image: mysql:8.4.13@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       # InnoDB
       - --innodb-buffer-pool-size=536870912      # 512M default (raise per-site for DB-heavy stores)
       - --innodb-redo-log-capacity=536870912
-      - --innodb-flush-log-at-trx-commit=2
+      # 1: every committed transaction (an order) is on disk before the shop answers. 2 flushes once per
+      # second and can lose that second on a power cut; it is only for a host whose data disk needs several
+      # milliseconds per synced write (MYSQL_FLUSH_LOG_AT_TRX_COMMIT=2 in .env; how to measure: README).
+      - --innodb-flush-log-at-trx-commit=${MYSQL_FLUSH_LOG_AT_TRX_COMMIT:-1}
       - --innodb-flush-method=O_DIRECT
       - --innodb-io-capacity=1000
       - --innodb-io-capacity-max=4000
@@ -153,7 +163,7 @@ services:
     restart: always
 
   redis:
-    image: redis:8.10.2-alpine3.23@sha256:0bf6577d7774e592b29d093e3ac9390eb91e13d72c21e506afce736de5e0eeb0
+    image: redis:8.10.3-alpine3.23@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
     # Pure cache: no persistence, capped memory, LRU eviction.
     command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     healthcheck:

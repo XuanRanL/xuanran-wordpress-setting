@@ -1,4 +1,4 @@
-FROM wordpress:7.1.3-php8.3-fpm@sha256:788d6b34cb89997483ff2a08e2e04d1df28ce284ca046cd7990b0be10828c5b9
+FROM wordpress:7.1.5-php8.3-fpm@sha256:68422e7571344a1ce0e4625d91e825d0accecdff83f0593db36ccf2bbce06744
 USER root
 RUN set -eux; \
     savedAptMark="$(apt-mark showmanual)"; \

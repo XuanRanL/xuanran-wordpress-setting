@@ -15,7 +15,7 @@ def service_block(name):
 class ComposeContractTests(unittest.TestCase):
     def test_runtime_images_are_digest_pinned_without_version_change(self):
         for service, tag in [('nginx', 'nginx:1.30-alpine'),
-                             ('db', 'mysql:8.4.13'), ('redis', 'redis:8.10.2-alpine3.23')]:
+                             ('db', 'mysql:8.4.13'), ('redis', 'redis:8.10.3-alpine3.23')]:
             image = re.search(r'^    image: (\S+)$', service_block(service), re.MULTILINE).group(1)
             self.assertRegex(image, '^' + re.escape(tag) + r'@sha256:[0-9a-f]{64}$')
 
@@ -25,6 +25,29 @@ class ComposeContractTests(unittest.TestCase):
         self.assertEqual(len(probes), 2)
         timeout = int(re.search(r'^      timeout: (\d+)s$', block, re.MULTILINE).group(1))
         self.assertGreaterEqual(timeout, sum(probes) + 2)
+
+
+class WordPressSettingsContractTests(unittest.TestCase):
+    def test_code_editor_is_off_while_installs_and_updates_stay_possible(self):
+        document = (ROOT/'docker-compose.yml').read_text()
+        self.assertIn("define('DISALLOW_FILE_EDIT', true);", service_block('wordpress'))
+        # The owner updates plugins in wp-admin: the constant that blocks installs and updates is never defined.
+        self.assertNotRegex(document, r"define\(\s*'DISALLOW_FILE_MODS'")
+
+    def test_core_installs_only_minor_releases_by_itself(self):
+        self.assertIn("define('WP_AUTO_UPDATE_CORE', 'minor');", service_block('wordpress'))
+
+    def test_settings_block_has_each_constant_once(self):
+        block = service_block('wordpress')
+        for name in ['DISALLOW_FILE_EDIT', 'WP_AUTO_UPDATE_CORE', 'DISABLE_WP_CRON']:
+            self.assertEqual(len(re.findall(r"define\('" + name + "'", block)), 1, name)
+
+
+class MysqlDurabilityContractTests(unittest.TestCase):
+    def test_every_commit_is_flushed_unless_the_host_sets_otherwise(self):
+        self.assertRegex(service_block('db'),
+                         r'(?m)^      - --innodb-flush-log-at-trx-commit=\$\{MYSQL_FLUSH_LOG_AT_TRX_COMMIT:-1\}$')
+        self.assertIn('MYSQL_FLUSH_LOG_AT_TRX_COMMIT', (ROOT/'.env.example').read_text())
 
 
 def ini_values(name):
