@@ -132,6 +132,11 @@ One file per site under `/etc/cron.d/`; stagger the minute field so sites don't 
   (`fastcgi_param HTTP_X_REAL_IP $remote_addr;`), replacing whatever the visitor sent under that name:
   WooCommerce reads the header before `REMOTE_ADDR` for the address it stores on an order, and the fleet's
   checkout guard (`xuanran-checkout-guard.php`, autosetup step 3f-2) limits orders and new accounts per address.
+- The block `xr-file-like-addresses` answers 404 to addresses that only look like a static file: a path with `;`
+  (`/index.php;.txt?...`) and `rest_route` on a path with a file extension (`/robots.txt?rest_route=...`). Without
+  it they pass a Cloudflare rule that leaves static extensions unchallenged, fall through `try_files` to
+  `index.php`, and reach WordPress' REST API. It stands above the sitemap rewrites (they change `$uri`). The guard
+  mu-plugin makes the same refusal in PHP for the spellings nginx cannot see (encoded parameter names).
 - Lock down later by replacing `_` with your explicit domains.
 
 ## Optional: serve FlyingPress cache from nginx (max speed)
